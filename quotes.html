@@ -15,17 +15,17 @@
   <meta property="og:locale" content="ar_SA">
   <meta property="og:site_name" content="نادي جليس القرائي">
   <meta property="og:url" content="https://jalees1.vercel.app/quotes.html">
-  <meta property="og:image" content="https://jalees1.vercel.app/assets/images/og-link-hq.jpg">
+  <meta property="og:image" content="https://jalees1.vercel.app/assets/images/og-jalees-logo.jpg">
   <meta property="og:image:type" content="image/jpeg">
-  <meta property="og:image:width" content="1600">
-  <meta property="og:image:height" content="845">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="شعار نادي جليس القرائي - أصدقاء القراءة">
 
   <!-- Twitter / X -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="اقتباسات الأعضاء | نادي جليس القرائي">
   <meta name="twitter:description" content="لقطات قرائية وتدوينات أعضاء نادي جليس القرائي من قلب اللقاءات في منطقة القصيم.">
-  <meta name="twitter:image" content="https://jalees1.vercel.app/assets/images/og-link-hq.jpg">
+  <meta name="twitter:image" content="https://jalees1.vercel.app/assets/images/og-jalees-logo.jpg">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="assets/images/logo-icon.png">
@@ -381,13 +381,28 @@
   <!-- JavaScript الخاص بصفحة الاقتباسات -->
   <script>
     /*
-      مصفوفة الاقتباسات الثابتة (تظهر في الصفحة لجميع الزوار)
-      لإضافة اقتباس: أضف عنصرًا بهذا الشكل:
+      ============================================================
+      ربط النشر المشترك (يظهر الاقتباس لجميع الأجهزة والزوار)
+      ============================================================
+      1) اتبع خطوات الإعداد في الملف: quotes-backend/الخطوات.md
+      2) الصق رابط تطبيق الويب (Web App URL) في المتغير أدناه QUOTES_API_URL
+      3) بمجرد وضع الرابط: كل اقتباس يُنشر من الموقع يُخزن في جدول جوجل
+         ويظهر فوراً لجميع الزوار على جميع الأجهزة.
+      أما إن بقي فارغاً: تعمل الاقتباسات محلياً على جهاز الكاتب فقط (وضع تجريبي).
+    */
+    const QUOTES_API_URL = "https://script.google.com/macros/s/AKfycbxBAjFD3tU3gqIynImONQzyiFysdsLO3KHyTYW-aDt7-aibhZCvUG3E0pUvFG445w2W/exec";
+
+    /*
+      مصفوفة الاقتباسات الثابتة (تظهر للجميع دون الحاجة للخدمة السحابية)
+      لإضافة اقتباس: أضف عنصراً بهذا الشكل:
       { text: "نص الاقتباس", author: "اسم العضو", book: "اسم الكتاب (اختياري)", ordinal: "اقتباس ٣" }
     */
     const memberQuotes = [];
 
-    /* الاقتباسات المضافة من النموذج (تُحفظ في متصفح الجهاز نفسه) */
+    /* الاقتباسات التي تُجلبها من الخدمة السحابية (Google Sheets) */
+    let sharedQuotes = [];
+
+    /* الاقتباسات المحفوظة من النموذج قبل ربط الخدمة (تُحفظ في متصفح الجهاز نفسه) */
     const STORAGE_KEY = "jaleesMemberQuotes";
     const userQuotes = (function loadUserQuotes() {
       try {
@@ -400,6 +415,37 @@
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(userQuotes));
       } catch { /* التخزين غير متاح */ }
+    }
+
+    /* جلب الاقتباسات المشتركة من جدول جوجل (عند ربط الخدمة) */
+    function loadSharedQuotes() {
+      if (!QUOTES_API_URL) return Promise.resolve();
+      return fetch(QUOTES_API_URL)
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.ok) sharedQuotes = (data.quotes || []).map(q => ({
+            text: q.text,
+            author: q.author,
+            book: q.book || "",
+            ordinal: q.date ? "نُشر في " + q.date : ""
+          }));
+          renderAll();
+        })
+        .catch(() => { /* الخدمة غير متاحة الآن — تبقى الاقتباسات المحلية */ });
+    }
+
+    /* نشر اقتباس إلى الخدمة السحابية */
+    function publishSharedQuote(quote) {
+      const body = new URLSearchParams({
+        author: quote.author,
+        book: quote.book || "",
+        text: quote.text
+      });
+      return fetch(QUOTES_API_URL, {
+        method: "POST",
+        body: body,
+        redirect: "follow"
+      }).then(r => r.json());
     }
 
     function esc(text) {
@@ -472,7 +518,7 @@
 
       grid.innerHTML = "";
 
-      const total = userQuotes.length + memberQuotes.length;
+      const total = userQuotes.length + sharedQuotes.length + memberQuotes.length;
       if (total === 0) {
         grid.style.display = "none";
         if (empty) empty.style.display = "block";
@@ -481,8 +527,9 @@
       if (empty) empty.style.display = "none";
       grid.style.display = "";
 
-      /* الاقتباسات الجديدة في الأعلى */
+      /* الترتيب: الاقتباس الأحدث في الأعلى */
       userQuotes.forEach(q => grid.appendChild(buildCard(q, true)));
+      sharedQuotes.forEach(q => grid.appendChild(buildCard(q, false)));
       memberQuotes.forEach((q, i) => {
         if (!q.ordinal) q.ordinal = "اقتباس " + (memberQuotes.length - i);
         grid.appendChild(buildCard(q, false));
@@ -537,13 +584,33 @@
           ts: Date.now()
         };
 
-        /* يُدرج الأحدث أولاً => يظهر في أعلى القائمة فوق الجميع */
-        userQuotes.unshift(quote);
-        saveUserQuotes();
-        renderAll();
+        if (QUOTES_API_URL) {
+          /* وضع النشر المشترك: يظهر الاقتباس لجميع الزوار عبر جدول جوجل */
+          showMsg("جارٍ نشر الاقتباس…");
+          publishSharedQuote(quote)
+            .then(data => {
+              form.reset();
+              showMsg("✓ تم نشر اقتباسك — يظهر الآن لجميع الزوار");
+              loadSharedQuotes();
+            })
+            .catch(() => {
+              /* فشل الاتصال: نحفظه محلياً حتى لا يضيع */
+              quote.ordinal = "اقتباسك (بانتظار المزامنة)";
+              userQuotes.unshift(quote);
+              saveUserQuotes();
+              renderAll();
+              form.reset();
+              showMsg("تعذر الاتصال بالخدمة — حُفظ اقتباسك محلياً مؤقتاً", true);
+            });
+        } else {
+          /* الوضع التجريبي: يظهر على جهاز الكاتب فقط */
+          userQuotes.unshift(quote);
+          saveUserQuotes();
+          renderAll();
 
-        form.reset();
-        showMsg("✓ تم نشر اقتباسك في أعلى القائمة");
+          form.reset();
+          showMsg("✓ تم نشر اقتباسك في أعلى القائمة");
+        }
 
         const firstCard = document.getElementById("quotes-grid").firstElementChild;
         if (firstCard) firstCard.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -551,6 +618,9 @@
     })();
 
     renderAll();
+    loadSharedQuotes();
+    /* تحديث تلقائي لقائمة الاقتباسات المشتركة كل دقيقة حتى يرى الزوار الجديدون الاقتباسات دون تحديث الصفحة */
+    setInterval(loadSharedQuotes, 60000);
   </script>
 </body>
 </html>
