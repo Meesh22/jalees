@@ -169,6 +169,119 @@
     .quotes-empty-icon { font-size: 44px; margin-bottom: 12px; }
     .quotes-empty-title { font-size: 21px; font-weight: 800; color: #1E3A2B; margin: 0 0 8px; }
     .quotes-empty-desc { color: #6E7B72; font-size: 14.5px; max-width: 520px; margin: 0 auto; line-height: 1.9; }
+
+    /* نموذج إضافة اقتباس */
+    .quote-form-card {
+      background: #FFFFFF;
+      border: 1px solid #E5DCC9;
+      border-radius: 18px;
+      padding: 30px 30px 26px;
+      box-shadow: 0 10px 30px rgba(20, 40, 29, 0.08);
+      margin-bottom: 40px;
+    }
+
+    .quote-form-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #1E3A2B;
+      margin: 0 0 6px;
+    }
+
+    .quote-form-desc {
+      color: #6E7B72;
+      font-size: 14px;
+      margin: 0 0 20px;
+      line-height: 1.8;
+    }
+
+    .quote-form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .quote-field { margin-bottom: 18px; }
+    .quote-row-field { margin-bottom: 18px; }
+
+    .quote-field label {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      color: #1E3A2B;
+      margin-bottom: 7px;
+    }
+
+    .quote-field label span {
+      font-weight: 500;
+      color: #98A69D;
+      font-size: 12px;
+    }
+
+    .quote-field input,
+    .quote-field textarea {
+      width: 100%;
+      border: 1.5px solid #E2D9C6;
+      border-radius: 12px;
+      background: #FBF9F4;
+      padding: 12px 14px;
+      font-family: "IBM Plex Sans Arabic", sans-serif;
+      font-size: 14.5px;
+      color: #26332C;
+      transition: border-color 0.2s ease, background 0.2s ease;
+      resize: vertical;
+    }
+
+    .quote-field input:focus,
+    .quote-field textarea:focus {
+      outline: none;
+      border-color: #C59B63;
+      background: #FFFFFF;
+    }
+
+    .quote-field input.invalid,
+    .quote-field textarea.invalid {
+      border-color: #C1554E;
+      background: #FDF6F5;
+    }
+
+    .quote-form-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .quote-form-msg {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #2E7D4F;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .quote-form-msg.visible { opacity: 1; }
+    .quote-form-msg.error { color: #C1554E; }
+
+    /* زر حذف الاقتباسات المضافة محلياً */
+    .quote-delete {
+      margin-right: auto;
+      border: none;
+      background: transparent;
+      color: #C1554E;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 2px 8px;
+      border-radius: 8px;
+      font-family: "IBM Plex Sans Arabic", sans-serif;
+      transition: background 0.2s ease;
+    }
+    .quote-delete:hover { background: rgba(193, 85, 78, 0.1); }
+
+    @media (max-width: 640px) {
+      .quote-form-row { grid-template-columns: 1fr; gap: 0; }
+      .quote-form-card { padding: 22px 18px; }
+    }
   </style>
 </head>
 <body>
@@ -197,6 +310,36 @@
 
   <main class="section" style="padding-top: 56px;">
     <div class="container">
+
+      <!-- نموذج إضافة اقتباس جديد -->
+      <section class="quote-form-card" aria-labelledby="quote-form-title">
+        <h2 class="quote-form-title" id="quote-form-title">✍️ أضف اقتباسك</h2>
+        <p class="quote-form-desc">
+          شارك أعضاء النادي أجمل فقرة قرأتها — يظهر اقتباسك في أعلى القائمة فور النشر.
+        </p>
+        <form id="quote-form" novalidate>
+          <div class="quote-form-row">
+            <div class="quote-field">
+              <label for="qf-author">اسم العضو</label>
+              <input id="qf-author" type="text" maxlength="60" placeholder="اكتب اسم العضو هنا" autocomplete="off">
+            </div>
+            <div class="quote-field">
+              <label for="qf-book">عنوان الكتاب <span>(اختياري)</span></label>
+              <input id="qf-book" type="text" maxlength="80" placeholder="مثال: المقدمة - ابن خلدون" autocomplete="off">
+            </div>
+          </div>
+          <div class="quote-field">
+            <label for="qf-text">نص الاقتباس</label>
+            <textarea id="qf-text" rows="4" maxlength="500" placeholder="اكتب نص الاقتباس هنا…" required></textarea>
+          </div>
+          <div class="quote-form-actions">
+            <button type="submit" class="btn btn-primary">
+              <span>نشر الاقتباس</span>
+            </button>
+            <span class="quote-form-msg" id="qf-msg" role="status" aria-live="polite"></span>
+          </div>
+        </form>
+      </section>
 
       <!-- شبكة الاقتباسات (تُملأ من مصفوفة memberQuotes في أسفل الصفحة) -->
       <div class="quotes-grid" id="quotes-grid"></div>
@@ -238,36 +381,176 @@
   <!-- JavaScript الخاص بصفحة الاقتباسات -->
   <script>
     /*
-      مصفوفة اقتباسات الأعضاء
-      لإضافة اقتباس جديد: أضف عنصرًا بهذا الشكل في المصفوفة وسيظهر فورًا:
+      مصفوفة الاقتباسات الثابتة (تظهر في الصفحة لجميع الزوار)
+      لإضافة اقتباس: أضف عنصرًا بهذا الشكل:
       { text: "نص الاقتباس", author: "اسم العضو", book: "اسم الكتاب (اختياري)", ordinal: "اقتباس ٣" }
     */
     const memberQuotes = [];
 
-    (function renderQuotes() {
-      const grid = document.getElementById('quotes-grid');
-      const empty = document.getElementById('quotes-empty');
+    /* الاقتباسات المضافة من النموذج (تُحفظ في متصفح الجهاز نفسه) */
+    const STORAGE_KEY = "jaleesMemberQuotes";
+    const userQuotes = (function loadUserQuotes() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch { return []; }
+    })();
+
+    function saveUserQuotes() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(userQuotes));
+      } catch { /* التخزين غير متاح */ }
+    }
+
+    function esc(text) {
+      const d = document.createElement("div");
+      d.textContent = text;
+      return d.innerHTML;
+    }
+
+    function buildCard(q, deletable) {
+      const card = document.createElement("article");
+      card.className = "quote-card";
+
+      const mark = document.createElement("span");
+      mark.className = "quote-mark";
+      mark.innerHTML = "&rdquo;";
+      card.appendChild(mark);
+
+      const p = document.createElement("p");
+      p.className = "quote-text";
+      p.textContent = q.text;
+      card.appendChild(p);
+
+      const meta = document.createElement("div");
+      meta.className = "quote-meta";
+
+      const author = document.createElement("span");
+      author.className = "quote-author";
+      author.textContent = "✍️ " + q.author;
+      meta.appendChild(author);
+
+      if (q.book) {
+        const book = document.createElement("span");
+        book.className = "quote-book";
+        book.textContent = "📘 " + q.book;
+        meta.appendChild(book);
+      }
+
+      if (q.ordinal) {
+        const ord = document.createElement("span");
+        ord.className = "quote-ordinal";
+        ord.textContent = "• " + q.ordinal;
+        meta.appendChild(ord);
+      }
+
+      if (deletable) {
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className = "quote-delete";
+        del.textContent = "حذف";
+        del.setAttribute("aria-label", "حذف اقتباسك من هذا الجهاز");
+        del.addEventListener("click", function () {
+          const idx = userQuotes.indexOf(q);
+          if (idx > -1) {
+            userQuotes.splice(idx, 1);
+            saveUserQuotes();
+            renderAll();
+          }
+        });
+        meta.appendChild(del);
+      }
+
+      card.appendChild(meta);
+      return card;
+    }
+
+    function renderAll() {
+      const grid = document.getElementById("quotes-grid");
+      const empty = document.getElementById("quotes-empty");
       if (!grid) return;
 
-      if (memberQuotes.length === 0) {
-        grid.style.display = 'none';
-        if (empty) empty.style.display = 'block';
+      grid.innerHTML = "";
+
+      const total = userQuotes.length + memberQuotes.length;
+      if (total === 0) {
+        grid.style.display = "none";
+        if (empty) empty.style.display = "block";
         return;
       }
-      if (empty) empty.style.display = 'none';
+      if (empty) empty.style.display = "none";
+      grid.style.display = "";
 
-      grid.innerHTML = memberQuotes.map(q => `
-        <article class="quote-card">
-          <span class="quote-mark">&rdquo;</span>
-          <p class="quote-text">${q.text}</p>
-          <div class="quote-meta">
-            <span class="quote-author">✍️ ${q.author}</span>
-            ${q.book ? `<span class="quote-book">📘 ${q.book}</span>` : ''}
-            ${q.ordinal ? `<span class="quote-ordinal">• ${q.ordinal}</span>` : ''}
-          </div>
-        </article>
-      `).join('');
+      /* الاقتباسات الجديدة في الأعلى */
+      userQuotes.forEach(q => grid.appendChild(buildCard(q, true)));
+      memberQuotes.forEach((q, i) => {
+        if (!q.ordinal) q.ordinal = "اقتباس " + (memberQuotes.length - i);
+        grid.appendChild(buildCard(q, false));
+      });
+    }
+
+    function showMsg(text, isError) {
+      const msg = document.getElementById("qf-msg");
+      if (!msg) return;
+      msg.textContent = text;
+      msg.classList.toggle("error", !!isError);
+      msg.classList.add("visible");
+      clearTimeout(showMsg._t);
+      showMsg._t = setTimeout(() => msg.classList.remove("visible"), 4000);
+    }
+
+    (function initQuoteForm() {
+      const form = document.getElementById("quote-form");
+      if (!form) return;
+
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        const authorEl = document.getElementById("qf-author");
+        const bookEl = document.getElementById("qf-book");
+        const textEl = document.getElementById("qf-text");
+
+        const author = authorEl.value.trim();
+        const book = bookEl.value.trim();
+        const text = textEl.value.trim();
+
+        [authorEl, textEl].forEach(el => el.classList.remove("invalid"));
+
+        if (!author || author.length < 2) {
+          authorEl.classList.add("invalid");
+          authorEl.focus();
+          showMsg("يرجى كتابة اسم العضو", true);
+          return;
+        }
+        if (!text || text.length < 10) {
+          textEl.classList.add("invalid");
+          textEl.focus();
+          showMsg("يرجى كتابة نص الاقتباس (١٠ أحرف على الأقل)", true);
+          return;
+        }
+
+        const quote = {
+          text: text,
+          author: author,
+          book: book,
+          ordinal: "اقتباس جديد",
+          ts: Date.now()
+        };
+
+        /* يُدرج الأحدث أولاً => يظهر في أعلى القائمة فوق الجميع */
+        userQuotes.unshift(quote);
+        saveUserQuotes();
+        renderAll();
+
+        form.reset();
+        showMsg("✓ تم نشر اقتباسك في أعلى القائمة");
+
+        const firstCard = document.getElementById("quotes-grid").firstElementChild;
+        if (firstCard) firstCard.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
     })();
+
+    renderAll();
   </script>
 </body>
 </html>
